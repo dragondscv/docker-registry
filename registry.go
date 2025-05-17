@@ -154,6 +154,7 @@ func (r *Registry) loggingMiddleware(next http.Handler) http.Handler {
 
 		duration := time.Since(start)
 		log.Printf("%s %s %s %d %v", req.RemoteAddr, req.Method, req.URL.Path, recorder.statusCode, duration)
+		log.Printf("response header: %+v", w.Header())
 	})
 }
 
@@ -388,7 +389,15 @@ func (r *Registry) handlePutManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// save with tag
 	manifestPath := filepath.Join(manifestDir, reference)
+	if err := os.WriteFile(manifestPath, body, 0644); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// save with digest
+	manifestPath = filepath.Join(manifestDir, digest)
 	if err := os.WriteFile(manifestPath, body, 0644); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -527,7 +536,7 @@ func (r *Registry) handleListTags(w http.ResponseWriter, req *http.Request) {
 func main() {
 	// Default configuration
 	config := Config{
-		StorageDir: "./registry-data",
+		StorageDir: "./data",
 		Addr:       ":9050",
 		BasicAuth:  false,
 	}
